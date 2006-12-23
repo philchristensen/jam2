@@ -1,0 +1,1266 @@
+<?php
+
+theme_add_style(drupal_get_path('module', 'jam2') . '/jam2.css');
+
+/*
+ * General Module Functions
+ */
+function jam2_help($section) {
+	switch ($section) {
+		case 'admin/help#jam2':
+			$output = '<p>'. t('The jam2 module is used to create a content type called <em>jams</em>. Jams consist of media recordings an artist uploads along with various pieces of additional information.') .'</p>';
+			$output .= '<p>'. t('The jam2 administration interface allows for complex configuration. It provides a submission form, workflow, default view permission, default edit permission, permissions for permission, and attachments.	 Trackbacks can also be enabled.') .'</p>';
+			$output .= t('<p>You can</p><ul><li>post a jam at <a href="%node-add-jam">create content &gt;&gt; jam</a>.</li></ul>', array('%node-add-jam' => url('node/add/jam'), '%admin-settings-content-types-jam' => url('admin/settings/content-types/jam')));
+			return $output;
+		case 'admin/modules#description':
+			return t('Allows users to upload recordings and create jams, which can be organized into albums.');
+		case 'node/add#jam':
+			return t('Jams primarily consist of an uploaded media file, along with additional meta information, like artist, album, and title information.');
+		case 'node/add#album':
+			return t('Albums associate jam album taxonomy data with images and other info.');
+		case 'node/add#podcast':
+			return t('Podcasts are special RSS feeds that contain MP3s and other media, and can be listed with the iTunes Music Store.');
+		case 'node/add#episode':
+			return t('Podcast episodes can be created from jams, URLs and node attachments.');
+		case 'node/add/jam':
+			return t('<p>Submitting this form will create a jam node, and automatically create a category for the artist and album.</p>' .
+					 '<p>Once you\'ve defined at least one jam from a particular album, you can associate album art and body text with that ' .
+					 'album by going to <a href="%node-add-album">create content &gt;&gt; album</a></p>', array('%node-add-album' => url('node/add/album')));
+		case 'node/add/album':
+			return t('<p>This interface will let you associate album art and other information with a previously defined album. <strong>If you do not '.
+					 'see the album you wish to define (or see a message about there being "no undefined albums"), make sure you\'ve created at least ' .
+					 'one jam with that album.</strong></p>');
+		case 'node/add/podcast':
+			return t('<p>This form will allow you to create a podcast profile. Once created, you can add episodes to a podcast by going to '.
+			 		 '<a href="%node-add-episode">create content &gt;&gt; podcast episode</a></p>', array('%node-add-episode' => url('node/add/episode')));
+	}
+}
+
+function jam2_node_info() {
+	return array('jam' => array('name' => t('jam'), 'base' => 'jam2_jam'),
+				 'album' => array('name' => t('album'), 'base' => 'jam2_album'),
+				 'podcast' => array('name' => t('podcast'), 'base' => 'jam2_podcast'),
+				 'episode' => array('name' => t('episode'), 'base' => 'jam2_episode')
+				);
+}
+
+function jam2_link($type, $node=null, $teaser=FALSE){
+	$links = array();
+	if($type == 'node' && $node->type == 'episode'){
+		$podcast_node = db_fetch_object(db_query("SELECT nid FROM {jam_podcast} WHERE pid = %d", $node->pid));
+		$podcast = node_load($podcast_node->nid);
+		$links[] = 'from podcast: ' . l(t($podcast->title), 'playlists/' . $podcast->code . '/view');
+	}
+	return $links;
+}
+
+function jam2_perm() {
+	return array('create jams', 'edit my jams', 'define albums', 'edit my albums', 'create playlists', 'edit my playlists', 'create podcast episodes', 'edit my podcast episodes');
+}
+
+function jam2_menu($may_cache) {
+	$items = array();
+
+	if ($may_cache) {
+		$items[] = array('path' => 'node/add/jam', 'title' => t('jam'),
+			'access' => user_access('create jams'));
+		$items[] = array('path' => 'node/add/album', 'title' => t('jam album'),
+			'access' => user_access('define albums'));
+		$items[] = array('path' => 'node/add/podcast', 'title' => t('podcast'),
+			'access' => user_access('create playlists'));
+		$items[] = array('path' => 'node/add/episode', 'title' => t('podcast'),
+			'access' => user_access('create podcast episodes'));
+	}
+	
+	$items[] = array('path' => 'playlists',
+		'title' => t('playlists'),
+		'callback' => 'jam2_playlist_page',
+		'access' => user_access('access content'),
+		);
+	
+	return $items;
+}
+
+function jam2_nodeapi(&$node, $op, $teaser, $page) {
+	switch ($op) {
+		case 'insert':
+			if($node->type == 'jam'){
+				$terms = array();
+				$vid = variable_get('jam2_vid', -1);
+				if($tid = @$node->taxonomy[$vid]){
+					$node->taxonomy[$vid] = $tid;
+				}
+				else{
+					$node->taxonomy[$vid] = $node->album_tid;
+				}
+			}
+			break;
+		case 'delete revision':
+			db_query('DELETE FROM {jam} WHERE vid = %d', $node->vid);
+			break;
+	}
+}
+
+function jam2_access($op, $node) {
+	global $user;
+
+	if ($op == 'create') {
+		if($node->type == 'jam'){
+			return user_access('create jams');
+		}
+		if($node->type == 'album'){
+			return user_access('define albums');
+		}
+		if($node->type == 'podcast'){
+			return user_access('create playlists');
+		}
+		if($node->type == 'episode'){
+			return user_access('create podcast episodes');
+		}
+	}
+
+	if ($op == 'update' || $op == 'delete') {
+		if($node->type == 'jam' && user_access('edit my jams') && ($user->uid == $node->uid || $user->uid == 1)) {
+			return TRUE;
+		}
+		if($node->type == 'album' && user_access('edit my albums') && ($user->uid == $node->uid || $user->uid == 1)) {
+			return TRUE;
+		}
+		if($node->type == 'podcast' && user_access('edit my playlists') && ($user->uid == $node->uid || $user->uid == 1)) {
+			return TRUE;
+		}
+		if($node->type == 'episode' && user_access('edit my podcast episodes') && ($user->uid == $node->uid || $user->uid == 1)) {
+			return TRUE;
+		}
+	}
+}
+
+function jam2_block($op = 'list', $delta = 0, $edit = array()) {
+	if ($op == 'list') {
+		$blocks[0]['info'] = t('Available Music');
+		return $blocks;
+	}
+	else if ($op == 'view') {
+		switch($delta) {
+			case 0:
+				$block = jam2_albums_block();
+				break;
+		}
+		return $block;
+	}
+}
+
+function jam2_form_alter($form_id, &$form){
+	if(in_array($form_id, array('album_node_form', 'jam_node_form', 'podcast_node_form', 'episode_node_form'))){
+		unset($form['preview']);
+		$form['#after_build'][] = 'jam2_path_form_alter';
+	}
+}
+
+/*
+ * Jam Node Functions
+ */
+function jam2_jam_form(&$node) {
+	global $user;
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	$form['title'] = array('#type' => 'textfield', '#title' => t('Title'), '#size' => 60, '#maxlength' => 255, '#required' => TRUE, '#default_value' => $node->title);
+	$form['code'] = array('#type' => 'textfield', '#title' => t('URL Code'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->code);
+
+	$form['metadata'] = array('#type' => 'fieldset', '#title' => 'Metadata', '#collapsible' => TRUE, '#collapsed' => FALSE);
+	if($node->taxonomy){
+		$form['metadata']['artist_title_help'] = array('#type' => 'markup',
+		'#value' => "<p><strong>Note:</strong> If you've selected an existing artist or album from above, changes here
+					will only affect the display of the artist or album information.</p>");
+	}
+	$form['metadata']['composer'] = array('#type' => 'textfield', '#title' => t('Composer'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->composer);
+	$form['metadata']['artist'] = array('#type' => 'textfield', '#title' => t('Artist'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->artist);
+	$form['metadata']['artist_tid'] = array('#type' => 'hidden', '#value' => $node->artist_tid);
+	$form['metadata']['album'] = array('#type' => 'textfield', '#title' => t('Album'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->album);
+	$form['metadata']['album_tid'] = array('#type' => 'hidden', '#value' => $node->album_tid);
+	$form['metadata']['track'] = array('#type' => 'weight', '#title' => t('Track Weight'), '#default_value' => $node->track, '#delta' => 20);
+
+	$form['media_group'] = array('#type' => 'fieldset', '#title' => 'Media', '#collapsible' => TRUE, '#collapsed' => FALSE);
+	if ($node->media) {
+		$form['media_group']['media'] = array('#type' => 'file', '#title' => t('File'), '#value' => $node->media, '#size' => 40,
+												'#description' => 'Accepted formats are MP3 and FLV.');
+		$form['media_group']['media_remove'] = array('#type' => 'checkbox', '#title' => t('Remove attached media, "' . basename($node->media) . '"'));
+	}
+	else{
+		$form['media_group']['media'] = array('#type' => 'file', '#title' => t('File'), '#default_value' => $node->media, '#size' => 40,
+												'#description' => 'Accepted formats are MP3 and FLV.');
+	}
+	$form['media_group']['media_or'] = array('#type' => 'markup', '#value' => '<div><b>-OR-</b></div>');
+	$form['media_group']['url'] = array('#type' => 'textfield', '#title' => t('URL'), '#default_value' => $node->url,
+			'#description' => 'If specified, a media URL will take precendence over attached media.');
+
+	$form['media_group']['control'] = array('#type' => 'radios', '#title' => t('Control'), '#default_value' => (@$node->control ? $node->control : 'embed'),
+			'#options' => array(
+								'download' => t('Download Link'),
+								'embed' => t('Embedded Player with Download Link'),
+								'protected' => t('Embedded Player Only')
+								),
+			'#description' => 'Select how this media will be displayed to the user.');
+
+	$form['body'] = array('#type' => 'textarea', '#title' => t('Body'), '#rows' => 20, '#default_value' => $node->body);
+	$form['format'] = filter_form($node->format);
+
+	return $form;
+}
+
+function jam2_jam_validate(&$node){
+	if($vid = variable_get('jam2_vid', 0)){
+		if($selected_album_tid = $node->taxonomy[$vid]){
+			if(! taxonomy_get_parents($selected_album_tid)){
+				form_set_error('taxonomy', "To use the jam tree, please select an album (not an artist) from the dropdown.");
+			}
+		}
+	}
+	
+	jam2_validate_code($node, 'jam');
+}
+
+function jam2_jam_submit(&$node){
+	if($file = file_check_upload('media')) {
+		$node->mediafile = file_save_upload($file, file_directory_path(), FILE_EXISTS_REPLACE);
+		$node->media = $node->mediafile->filepath;
+	}
+	if(! $node->code){
+		$node->code = preg_replace('/\W/', '-', strtolower($node->title));
+	}
+}
+
+function jam2_jam_insert($node) {
+	$node->jid = db_next_id('{jam}_jid');
+	jam2_handle_taxonomy($node);
+	db_query("INSERT INTO {jam} (jid, vid, nid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track) VALUES (%d, %d, %d, '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, '%s', %d)",
+				$node->jid, $node->vid, $node->nid, $node->code, $node->media, $node->url, $node->control, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track);
+	if(module_exist('path')){
+		$node->path = 'jams/' . $node->code;
+	}
+}
+
+function jam2_jam_update($node) {
+	if ($node->media_remove) {
+		file_delete($node->media);
+		$node->media = '';
+	}
+
+	if ($node->revision) {
+		jam2_insert($node);
+	}
+	else {
+		jam2_handle_taxonomy($node);
+		db_query("UPDATE {jam} SET code = '%s', media = '%s', url = '%s', control = '%s', artist = '%s', artist_tid = %d, album = '%s', album_tid = %d, composer = '%s', track = %d WHERE vid = %d",
+		$node->code, $node->media, $node->url, $node->control, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track, $node->vid);
+		if(module_exist('path')){
+			$node->path = 'jams/' . $node->code;
+		}
+	}
+}
+
+function jam2_jam_load($node) {
+	 $additions = db_fetch_object(db_query('SELECT jid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track FROM {jam} WHERE vid = %d', $node->vid));
+	 return $additions;
+}
+
+function jam2_jam_delete($node) {
+	 db_query('DELETE FROM {jam} WHERE nid = %d', $node->nid);
+}
+
+function jam2_jam_view(&$node, $teaser = FALSE, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
+	if($teaser){
+		$node->teaser = theme('jam', $node, $teaser, $page);
+	}
+	else{
+		$node->body = theme('jam', $node, $teaser, $page);
+	}
+}
+
+/*
+ * Album Node Functions
+ */
+function jam2_album_form(&$node){
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	$undefined_albums = jam2_get_undefined_albums();
+	if($undefined_albums){
+		$undefined_albums = array_merge(array('Select...'), $undefined_albums);
+	}
+	else if(! $node->nid){
+		drupal_set_message("Currently there are no undefined albums.", 'error');
+		$undefined_albums = array();
+	}
+
+	if($node->tid){
+		$form['tid'] = array('#type' => 'hidden', '#value' => "tid-$node->tid");
+		$term = taxonomy_get_term($node->tid);
+		$form['album_name_display'] = array('#type' => 'markup', '#value' =>'<div class="form-item"><label>Album:</label><font size="4">' . $term->name . '</font></div>');
+	}
+	else{
+		$form['tid'] = array('#type' => 'select', '#title' => 'Album', '#required' => TRUE, '#options' => $undefined_albums, '#default_value' => $node->tid);
+	}
+
+	$form['featured'] = array('#type' => 'checkbox', '#default_value' => $node->featured, '#title' => t('Featured album'), '#description' => "Check here to display this album in the &quot;Featured Jams&quot; block");
+	$form['podcast'] = array('#type' => 'checkbox', '#default_value' => $node->podcast, '#title' => t('Enable playlists'), '#description' => "Check here to make this album available as a podcast");
+	$form['code'] = array('#type' => 'textfield', '#title' => t('URL Code'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->code);
+
+	$form['cover'] = array('#type' => 'file', '#title' => t('Cover Image'), '#default_value' => $node->cover, '#size' => 40);
+	if ($node->cover) {
+		$form['cover_current'] = array('#type' => 'markup', '#value' => '<div class="video">Current album cover:<br/><img alt="" src="'. base_path() . $node->cover .'" /></div>');
+		$form['cover_remove'] = array('#type' => 'checkbox', '#title' => t('Remove this cover'));
+	}
+
+	$form['body'] = array('#type' => 'textarea', '#title' => t('Body'), '#rows' => 20, '#default_value' => $node->body);
+	$form['format'] = filter_form($node->format);
+
+	return $form;
+}
+
+function jam2_album_validate(&$node){
+	if(! strlen($node->tid) > 4){
+		form_set_error('tid', "You must select an album to define.");
+	}
+	jam2_validate_code($node, 'jam_album');
+}
+
+function jam2_album_submit(&$node){
+	if($file = file_check_upload('cover')) {
+		$node->coverfile = file_save_upload($file, file_directory_path(), FILE_EXISTS_REPLACE);
+		$node->cover = $node->coverfile->filepath;
+	}
+	
+	list($discard, $node->tid) = explode('-', $node->tid);
+	
+	$term = taxonomy_get_term($node->tid);
+	$node->title = $term->name;
+	if(! $node->code){
+		$node->code = preg_replace('/\W/', '-', strtolower($node->title));
+	}
+}
+
+function jam2_album_update($node) {
+	if ($node->cover_remove) {
+		file_delete($node->cover);
+		$node->cover = '';
+	}
+
+	if ($node->revision) {
+		jam2_album_insert($node);
+	}
+	else {
+		db_query("UPDATE {jam_album} SET featured = %d, podcast = %d, code = '%s', cover = '%s', tid = %d WHERE vid = %d", $node->featured, $node->podcast, $node->code, $node->cover, $node->tid, $node->vid);
+		if(module_exist('path')){
+			$node->path = 'albums/' . $node->code;
+		}
+	}
+}
+
+function jam2_album_insert($node) {
+	$node->aid = db_next_id('{jam_album}_aid');
+	db_query("INSERT INTO {jam_album} (aid, vid, nid, tid, featured, podcast, code, cover) VALUES (%d, %d, %d, %d, %d, %d, '%s', '%s')", $node->aid, $node->vid, $node->nid, $node->tid, $node->featured, $node->podcast, $node->code, $node->cover);
+	if(module_exist('path')){
+		$node->path = 'albums/' . $node->code;
+	}
+}
+
+function jam2_album_delete($node) {
+	 db_query('DELETE FROM {jam_album} WHERE nid = %d', $node->nid);
+}
+
+function jam2_album_load($node) {
+	$additions = db_fetch_object(db_query('SELECT aid, tid, featured, podcast, code, cover FROM {jam_album} WHERE vid = %d', $node->vid));
+	$term = taxonomy_get_term($additions->tid);
+	$additions->title = $term->name;
+	$parent_term = taxonomy_get_term($term->parent);
+	$additions->artist = $parent_term->name;
+	return $additions;
+}
+
+function jam2_album_get_jams($album){
+	$jam_result = db_query("SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n INNER JOIN {term_node} tn ON n.nid = tn.nid INNER JOIN {jam} j ON j.nid = n.nid WHERE tn.tid = $album->tid AND n.status = 1 ORDER BY j.track");
+	while($node = db_fetch_object($jam_result)){
+		$jams[] = node_load($node->nid);
+	}
+	return $jams;
+}
+
+function jam2_album_view(&$node, $teaser = FALSE, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
+	if($teaser){
+		$node->teaser = theme('album', $node, $teaser, $page);
+	}
+	else{
+		$node->body = theme('album', $node, $teaser, $page);
+	}
+}
+
+/*
+ * Podcast Node Functions
+ */
+function jam2_podcast_form(&$node){
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	$form['title'] = array('#type' => 'textfield', '#title' => t('Title'), '#size' => 60, '#maxlength' => 255, '#required' => TRUE, '#default_value' => $node->title);
+	$form['code'] = array('#type' => 'textfield', '#title' => t('URL Code'), '#size' => 60, '#maxlength' => 255, '#default_value' => $node->code);
+	
+	$form['cover'] = array('#type' => 'file', '#title' => t('Cover Image'), '#default_value' => $node->cover, '#size' => 40);
+	if ($node->cover) {
+		$form['cover_current'] = array('#type' => 'markup', '#value' => '<div class="video">Current album cover:<br/><img alt="" src="'. base_path() . $node->cover .'" /></div>');
+		$form['cover_remove'] = array('#type' => 'checkbox', '#title' => t('Remove this cover'));
+	}
+
+	$form['blocked'] = array('#type' => 'checkbox', '#default_value' => $node->blocked, '#title' => t('Block this podcast'),
+							'#description' => "Check here to prevent this podcast from appearing in the iTunes Podcast Directory.");
+	$form['explicit'] = array('#type' => 'select', '#title' => 'Explicit', '#options' => array('no' => 'no', 'yes' => 'yes', 'clean' => 'clean'), '#default_value' => $node->explicit,
+							'#description' => "This setting applies to the entire podcast.");
+	$form['keywords'] = array('#type' => 'textfield', '#title' => t('Keywords'), '#size' => 60, '#maxlength' => 255, '#default_value' => $node->keywords,
+								'#description' => 'Text entered here will not be displayed, but will be searchable in the iTunes directory.');
+	
+	$form['subtitle'] = array('#type' => 'textfield', '#title' => t('Short Description'), '#size' => 60, '#maxlength' => 255, '#default_value' => $node->subtitle,
+								'#description' => 'The contents of this tag are shown in the Description column in iTunes. The subtitle displays best if it is only a few words long.');
+	$form['body'] = array('#type' => 'textarea', '#title' => t('Body'), '#rows' => 20, '#default_value' => $node->body,
+							'#description' => 'The contents of this field are shown in a separate window in iTunes that appears when the "circled i" in the Description column is clicked.
+							It also appears on the iTunes page for your podcast.');
+	$form['format'] = filter_form($node->format);
+
+	return $form;
+}
+
+function jam2_podcast_validate(&$node){
+	jam2_validate_code($node, 'jam_podcast');
+}
+
+function jam2_podcast_submit(&$node){
+	if($file = file_check_upload('cover')) {
+		$node->coverfile = file_save_upload($file, file_directory_path(), FILE_EXISTS_REPLACE);
+		$node->cover = $node->coverfile->filepath;
+	}
+	
+	if(! $node->code){
+		$node->code = preg_replace('/\W/', '-', strtolower($node->title));
+	}
+}
+
+function jam2_podcast_update($node) {
+	if ($node->cover_remove) {
+		file_delete($node->cover);
+		$node->cover = '';
+	}
+
+	if ($node->revision) {
+		jam2_podcast_insert($node);
+	}
+	else {
+		db_query("UPDATE {jam_podcast} SET code = '%s', blocked = %d, cover = '%s', explicit = '%s', keywords = '%s', subtitle = '%s' WHERE vid = %d",
+										$node->code, $node->blocked, $node->cover, $node->explicit, $node->keywords, $node->subtitle, $node->vid);
+		if(module_exist('path')){
+			$node->path = 'playlists/' . $node->code . '/view';
+		}
+	}
+}
+
+function jam2_podcast_insert($node) {
+	$node->pid = db_next_id('{jam_podcast}_pid');
+	db_query("INSERT INTO {jam_podcast} (pid, vid, nid, code, blocked, cover, explicit, keywords, subtitle) VALUES (%d, %d, %d, '%s', %d, '%s', '%s', '%s', '%s')",
+										$node->pid, $node->vid, $node->nid, $node->code, $node->blocked, $node->cover, $node->explicit, $node->keywords, $node->subtitle);
+	if(module_exist('path')){
+		$node->path = 'playlists/' . $node->code . '/view';
+	}
+}
+
+function jam2_podcast_delete($node) {
+	$result = db_query("SELECT nid FROM {jam_podcast_episode} WHERE pid = %d", $node->pid);
+	while($episode = db_fetch_object($result)){
+		node_delete($episode->nid);
+	}
+	db_query('DELETE FROM {jam_podcast} WHERE nid = %d', $node->nid);
+}
+
+function jam2_podcast_load($node) {
+	$additions = db_fetch_object(db_query('SELECT pid, code, blocked, cover, explicit, keywords, subtitle FROM {jam_podcast} WHERE vid = %d', $node->vid));
+	return $additions;
+}
+
+function jam2_podcast_view(&$node, $teaser = FALSE, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
+	if($teaser){
+		$node->teaser = theme('podcast', $node, $teaser, $page);
+	}
+	else{
+		$node->body = theme('podcast', $node, $teaser, $page);
+	}
+}
+
+/*
+ * Podcast Episode Functions
+ */
+function jam2_episode_form(&$node){
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	$form['title'] = array('#type' => 'textfield', '#title' => t('Title'), '#size' => 60,
+							'#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->title,
+							'#description' => 'If this podcast episode contains a jam, the jam title will override this field.');
+	
+	global $user;
+	$available_playlists = jam2_get_user_playlists($user);
+	if($available_playlists){
+		$available_playlists = array_merge(array('Select...'), $available_playlists);
+	}
+	else if(! $node->nid){
+		drupal_set_message("Currently there are available playlists.", 'error');
+		$available_playlists = array();
+	}
+
+	$available_jams = jam2_get_user_jams($user);
+	if($available_jams){
+		$available_jams = array_merge(array('Select...'), $available_jams);
+		$jams_description = "Select a jam from this list to podcast its attached media. Only jams you created are listed here.";
+	}
+	else if(! $node->nid){
+		$available_jams = array();
+		$jams_description = "You have not created any jams.";
+	}
+
+	$form['pid'] = array('#type' => 'select', '#title' => 'Podcast', '#required' => TRUE, '#options' => $available_playlists, '#default_value' => 'pid-' . $node->pid);
+	
+	$form['metadata'] = array('#type' => 'fieldset', '#title' => 'Episode Metadata', '#collapsible' => TRUE, '#collapsed' => TRUE);
+	$form['metadata']['blocked'] = array('#type' => 'checkbox', '#default_value' => $node->blocked, '#title' => t('Block this podcast'),
+							'#description' => "Check here to prevent this podcast from appearing in the iTunes Podcast Directory.");
+	$form['metadata']['explicit'] = array('#type' => 'select', '#title' => 'Explicit', '#options' => array('no' => 'no', 'yes' => 'yes', 'clean' => 'clean'), '#default_value' => $node->explicit,
+							'#description' => "This setting applies to the entire podcast.");
+	$form['metadata']['keywords'] = array('#type' => 'textfield', '#title' => t('Keywords'), '#size' => 60, '#maxlength' => 255, '#default_value' => $node->keywords,
+								'#description' => 'Text entered here will not be displayed, but will be searchable in the iTunes directory.');
+	
+	$form['metadata']['subtitle'] = array('#type' => 'textfield', '#title' => t('Short Description'), '#size' => 60, '#maxlength' => 255, '#default_value' => $node->subtitle,
+								'#description' => 'The contents of this tag are shown in the Description column in iTunes. The subtitle displays best if it is only a few words long.');
+	
+	$form['content'] = array('#type' => 'fieldset', '#title' => 'Episode Content', '#collapsible' => TRUE, '#collapsed' => FALSE);
+	$form['content']['jid'] = array('#type' => 'select', '#title' => 'Existing Jam', '#required' => FALSE, '#options' => $available_jams, '#default_value' => 'jid-' . $node->jid,
+									'#description' => $jams_description);
+	$form['content']['jam_or'] = array('#type' => 'markup', '#value' => '<div><b>-OR-</b></div>');
+	if ($node->media) {
+		$form['content']['media'] = array('#type' => 'file', '#title' => t('File'), '#value' => $node->media, '#size' => 40,
+												'#description' => 'Accepted formats are MP3 and FLV.');
+		$form['content']['media_remove'] = array('#type' => 'checkbox', '#title' => t('Remove attached media, "' . basename($node->media) . '"'));
+	}
+	else{
+		$form['content']['media'] = array('#type' => 'file', '#title' => t('File'), '#default_value' => $node->media, '#size' => 40,
+												'#description' => 'Accepted formats are MP3 and FLV.');
+	}
+	$form['content']['media_or'] = array('#type' => 'markup', '#value' => '<div><b>-OR-</b></div>');
+	$form['content']['url'] = array('#type' => 'textfield', '#title' => t('URL'), '#default_value' => $node->url,
+			'#description' => 'If specified, a media URL will take precendence over attached media.');
+	
+	$form['body'] = array('#type' => 'textarea', '#title' => t('Body'), '#rows' => 20, '#default_value' => $node->body,
+							'#description' => 'The contents of this field are shown in a separate window in iTunes that appears when the "circled i" in the Description column is clicked.
+							It also appears on the iTunes page for your podcast.');
+	$form['format'] = filter_form($node->format);
+
+	return $form;
+}
+
+function jam2_episode_validate(&$node){
+	if(!$node->title && !$node->jid){
+		form_set_error('title', 'You must either select a jam to podcast, or enter a title.');
+	}
+	if(strlen($node->pid) < 5){
+		form_set_error('pid', "You must select a podcast this episode will belong to.");
+	}
+	if(! (strlen($node->jid) > 4 || $node->media || $node->url)){
+		form_set_error('jid', "You must select some content for this podcast episode.");
+	}
+}
+
+function jam2_episode_submit(&$node){
+	list($discard, $node->pid) = explode('-', $node->pid);
+	list($discard, $node->jid) = explode('-', $node->jid);
+
+	if(! $node->title){
+		$jam_node = db_fetch_object(db_query("SELECT nid FROM {jam} WHERE jid = %d", $node->jid));
+		if($jam_node){
+			$jam = node_load($jam_node->nid);
+			$node->title = $jam->title;
+		}
+	}
+}
+
+function jam2_episode_update($node) {
+	if ($node->revision) {
+		jam2_episode_insert($node);
+	}
+	else {
+		db_query("UPDATE {jam_podcast_episode} SET pid = %d, jid = %d, media = '%s', url = '%s', blocked = %d, explicit = '%s', keywords = '%s', subtitle = '%s' WHERE vid = %d",
+										$node->pid, $node->jid, $node->media, $node->url, $node->blocked, $node->explicit, $node->keywords, $node->subtitle, $node->vid);
+	}
+}
+
+function jam2_episode_insert($node) {
+	$node->eid = db_next_id('{jam_podcast_episode}_eid');
+	db_query("INSERT INTO {jam_podcast_episode} (eid, vid, nid, pid, jid, media, url, blocked, explicit, keywords, subtitle) VALUES (%d, %d, %d, %d, %d, '%s', '%s', %d, '%s', '%s', '%s')",
+										$node->eid, $node->vid, $node->nid, $node->pid, $node->jid, $node->media, $node->url, $node->blocked, $node->explicit, $node->keywords, $node->subtitle);
+}
+
+function jam2_episode_delete($node) {
+	 db_query('DELETE FROM {jam_podcast_episode} WHERE nid = %d', $node->nid);
+}
+
+function jam2_episode_load($node) {
+	$additions = db_fetch_object(db_query('SELECT eid, pid, jid, media, url, blocked, explicit, keywords, subtitle FROM {jam_podcast_episode} WHERE vid = %d', $node->vid));
+	return $additions;
+}
+
+function jam2_episode_view(&$node, $teaser = FALSE, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
+	if($teaser){
+		$node->teaser = theme('episode', $node, $teaser, $page);
+	}
+	else{
+		$node->body = theme('episode', $node, $teaser, $page);
+	}
+}
+
+/*
+ * Theme Functions
+ */
+function theme_jam($jam, $teaser = FALSE, $page = FALSE){
+	if($teaser){
+		$output .= $jam->teaser;
+	}
+	else{
+		if($jam->control == 'embed' || $jam->control == 'protected'){
+			$url = jam2_get_enclosure_url($jam);
+			$type = array_pop(explode('.', strtolower($url)));
+			if($type == 'mp3'){
+				$media_player = drupal_get_path('module', 'jam2') .'/flash/mp3player.swf';
+				$width = 300;
+				$height = 100;
+			}
+			elseif($type == 'flv'){
+				$media_player = drupal_get_path('module', 'jam2') .'/flash/mediaplayer.swf';
+				$width = 320;
+				$height = 240;
+			}
+			else{
+				return;
+			}
+			$output = <<<END
+			<object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://fpdownload.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=8,0,0,0"
+				width="$width"
+				height="$height"
+				id="mediaplayer"
+				align="middle">
+			<param name="allowScriptAccess" value="sameDomain" />
+			<param name="movie" value="$media_player" />
+			<param name="quality" value="high" />
+			<param name="bgcolor" value="#ffffff" />
+			<param name="FlashVars" value="contentPath=$video_url&autoPlay=$autoPlay" />
+			<embed src="$media_player" quality="high" bgcolor="#ffffff" width="$width" height="$height" name="mediaplayer"
+			align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash"
+			FlashVars="contentPath=$url&autoPlay=1" pluginspage="http://www.macromedia.com/go/getflashplayer" />
+			</object>
+END;
+		}
+		if($jam->control == 'download' || $jam->control == 'embed'){
+			$output .= theme('media_link', $jam);
+		}
+		$output .= $jam->body;
+	}
+	return $output;
+}
+
+function theme_episode($episode, $teaser = FALSE, $page = FALSE){
+	if($teaser){
+		$output .= $episode->teaser;
+	}
+	else{
+		$output .= theme('media_link', $episode);
+		$output .= $episode->body;
+	}
+	return $output;
+}
+
+function theme_album($album, $teaser = FALSE, $page = FALSE){
+	$jams = jam2_album_get_jams($album);
+
+	$output = '<table class="jam-album">';
+	$output .= '<tr><td valign="top"' . ($teaser ? '' : ' rowspan="2"') . '>';
+	if($album->cover){
+		if($teaser){
+			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $album->cover . '"/>';
+		}
+		else{
+			$output .= '<img class="jam-album-cover" src="' . base_path() . $album->cover . '"/>';
+		}
+	}
+	$output .= '</td><td valign="top">';
+	if($teaser){
+		$output .= $album->teaser;
+	}
+	else{
+		$output .= $album->body;
+	}
+	$output .= '</td></tr>';
+	if(! $teaser){
+		$output .= '<tr><td valign="top">';
+		$output .= '<div class="jam-album-tracks">';
+		$output .= theme('jam_list', $jams, 'Available Tracks:');
+		if($album->podcast){
+			$output .= theme('itunes_feed', url('playlists/'. $album->code));
+		}
+		$output .= '</div>';
+		$output .= '</td></tr>';
+	}
+	$output .= '</table>';
+
+	return $output;
+}
+
+function theme_podcast($podcast, $teaser = FALSE, $page = FALSE){
+	$episode_list = jam2_episode_list($podcast->pid);
+
+	$output = '<table class="jam-album">';
+	$output .= '<tr><td valign="top"' . ($teaser ? '' : ' rowspan="2"') . '>';
+	if($podcast->cover){
+		if($teaser){
+			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $podcast->nid)) . '"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $podcast->cover . '"/>';
+		}
+		else{
+			$output .= '<img class="jam-album-cover" src="' . base_path() . $podcast->cover . '"/>';
+		}
+	}
+	$output .= '</td><td valign="top">';
+	if($teaser){
+		$output .= $podcast->teaser;
+	}
+	else{
+		$output .= $podcast->body;
+	}
+	$output .= '</td></tr>';
+	if(! $teaser){
+		$output .= '<tr><td valign="top">';
+		$output .= '<div class="jam-podcast-episodes">';
+		if($episode_list){
+			$output .= theme('episode_list', $episode_list, 'Available Episodes:');
+			if(! $podcast->blocked){
+				$output .= theme('itunes_feed', url('playlists/'. $podcast->code));
+			}
+		}
+		$output .= '</div>';
+		$output .= '</td></tr>';
+	}
+	$output .= '</table>';
+
+	return $output;
+}
+
+function theme_jam_list($jams, $title=''){
+	return theme('item_list', array_map('_jam2_jamify', $jams), $title, 'ol');
+}
+
+function theme_episode_list($jams, $title=''){
+	return theme('item_list', array_map('_jam2_podify', $jams), $title, 'ol');
+}
+
+function theme_itunes_feed($url){
+	return theme('feed_icon', $url) . '&nbsp;&nbsp;&nbsp;&nbsp;iTunes-enhanced podcast';
+}
+
+function theme_media_link($node){
+	$url = jam2_get_enclosure_url($node);
+	$filename = array_shift(explode('?', basename($url)));
+	$enclosure = jam2_get_enclosure($node);
+	$filesize = format_size($enclosure['attributes']['length']);
+	
+	$output = '<div class="' . $node->type . '-download">';
+	$output .= "<strong>Download Attached Media:</strong><br/><a href=\"$url\">" . urldecode($filename) . "</a>, $filesize";
+	$output .= '</div>';
+	return $output;
+}
+
+/*
+ * Supporting Functions
+ */
+function jam2_playlist_page($code=null, $type='podcast'){
+	if($code){
+		$node = db_fetch_object(db_query("SELECT a.nid, a.tid, a.podcast FROM {jam_album} a WHERE a.code = '%s'", $code));
+		if($node){
+			if(! $node->podcast){
+				return drupal_not_found();
+			}
+			$result = taxonomy_select_nodes(array($node->tid), 'or', 0, FALSE);
+		}
+		else{
+			$node = db_fetch_object(db_query("SELECT nid, pid FROM {jam_podcast} p WHERE p.code = '%s'", $code));
+			if($node){
+				$result = db_query("SELECT n.nid, n.created FROM {node} n INNER JOIN {jam_podcast_episode} e ON e.nid = n.nid WHERE e.pid = %d", $node->pid);
+			}
+			else{
+				return drupal_not_found();
+			}
+		}
+	}
+	else{
+		$result = pager_query(db_rewrite_sql("SELECT n.nid, n.sticky, n.created FROM {node} n WHERE n.promote = 1 AND n.status = 1 AND n.type = 'podcast' ORDER BY n.sticky DESC, n.created DESC"), variable_get('default_nodes_main', 10));
+
+		while ($node = db_fetch_object($result)) {
+			$output .= node_view(node_load($node->nid), 1);
+		}
+		$output .= theme('pager', NULL, variable_get('default_nodes_main', 10));
+		return $output;
+	}
+	
+	if($type == 'podcast'){
+		return jam2_feed($result, $node);
+	}
+	elseif($type == 'm3u'){
+		return jam2_m3u($result, $node);
+	}
+}
+
+function jam2_m3u($result, $origin){
+	
+}
+
+function jam2_feed($result, $origin) {
+	global $base_url, $locale;
+
+	$item_length = variable_get('feed_item_length', 'teaser');
+	$namespaces = array('xmlns:dc="http://purl.org/dc/elements/1.1/"', 'xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"');
+	$origin = node_load($origin->nid);
+
+	while($item = db_fetch_object($result)) {
+		$item = node_load($item->nid);
+		if($item->type == 'jam'){
+			$link = url("jams/$item->code", NULL, NULL, 1);
+			if($item->control == 'protected' || (!$item->url && !$item->media)){
+				continue;
+			}
+		}
+		elseif($item->type == 'episode'){
+			$link = url("node/$item->nid", NULL, NULL, 1);
+		}
+		else{
+			continue;
+		}
+		
+		if ($item_length != 'title') {
+			$teaser = ($item_length == 'teaser') ? TRUE : FALSE;
+
+			if($item->type == 'jam'){
+				jam2_jam_view($item, 'view', $teaser, FALSE);
+			}
+			elseif($item->type == 'episode') {
+				jam2_episode_view($item, 'view', $teaser, FALSE);
+			}
+
+			// Allow modules to change $node->teaser before viewing.
+			node_invoke_nodeapi($item, 'view', $teaser, FALSE);
+		}
+
+		// Prepare the item description
+		switch ($item_length) {
+			case 'fulltext':
+				$item_text = $item->body;
+				break;
+			case 'teaser':
+				$item_text = $item->teaser;
+				if ($item->readmore) {
+					$item_text .= '<p>'. l(t('read more'), 'node/'. $item->nid, NULL, NULL, NULL, TRUE) .'</p>';
+				}
+				break;
+			case 'title':
+				$item_text = '';
+				break;
+		}
+
+		$owner = db_fetch_object(db_query("SELECT * FROM {users} WHERE uid = %d", $origin->uid));
+		if($item->type == 'jam'){
+			$extra = array(
+				array('key' => 'itunes:author', 'value' => $item->artist),
+				array('key' => 'itunes:subtitle', 'value' => $item->album),
+				array('key' => 'itunes:summary', 'value' => $item->body),
+				jam2_get_enclosure($item)
+				);
+		}
+		elseif($item->type == 'episode'){
+			if($item->jid && (!$item->media) && (!$item->url)){
+				$jam_node = db_fetch_object(db_query("SELECT nid FROM {jam} WHERE jid = %d", $item->jid));
+				$jam = node_load($jam_node->nid);
+			}
+			$extra = array(
+				array('key' => 'itunes:author', 'value' => isset($jam) ? $jam->artist : $owner->mail),
+				array('key' => 'itunes:subtitle', 'value' => $item->subtitle),
+				array('key' => 'itunes:summary', 'value' => $item->body),
+				jam2_get_enclosure($item)
+				);
+		}
+
+		// Allow modules to add additional item fields
+		$extra = array_merge($extra, node_invoke_nodeapi($item, 'rss item'));
+		$extra = array_merge($extra, array(
+											array(
+													'key' => 'pubDate',
+													'value' =>	date('r', $item->created)
+												),
+											array(
+													'key' => 'dc:creator',
+													'value' => $owner->mail
+												),
+											array(
+													'key' => 'guid',
+													'value' => $item->nid . ' at ' . $base_url,
+													'attributes' => array('isPermaLink' => 'false')
+												)
+											)
+							);
+
+		if($item->type == 'episode'){
+			if($item->blocked){
+				$extra[] = array(
+												'key' => 'itunes:blocked'
+								);
+			}
+	
+			if($item->explicit != 'no'){
+				$extra[] = array(
+												'key' => 'itunes:explicit',
+												'value' => $item->explicit
+								);
+			}
+	
+			if($item->keywords){
+				$extra[] = array(
+												'key' => 'itunes:keywords',
+												'value' => $item->keywords
+								);
+			}
+		}
+	
+		foreach ($extra as $element) {
+			if ($element['namespace']) {
+				$namespaces = array_unique(array_merge($namespaces, $element['namespace']));
+			}
+		}
+		$items .= format_rss_item(isset($jam) ? $jam->title : $item->title, $link, $item_text, $extra);
+	}
+
+	$owner = db_fetch_object(db_query("SELECT * FROM {users} WHERE uid = %d", $origin->uid));
+
+	$channel = array(
+		'version'		=> '2.0',
+		'title'			=> $origin->title . ' - ' . variable_get('site_name', 'drupal'),
+		'link'			=> $origin->type == 'album' ? url("albums/$origin->code") : url("playlists/$origin->code/view"),
+		'description'	=> $origin->body,
+		'language'		=> $locale
+	);
+	
+	$channel_elements = array(
+		array(
+				'key'   => 'itunes:subtitle',
+				'value' => $origin->type == 'album' ? $origin->title : $origin->subtitle,
+			),
+		array(
+				'key'   => 'itunes:author',
+				'value' => $origin->type == 'album' ? $origin->artist : $owner->mail,
+			),
+		array(
+				'key'   => 'itunes:summary',
+				'value' => $origin->body,
+			),
+		array(
+				'key'   => 'itunes:image',
+				'attributes' => array('href' => $base_url . base_path() . $origin->cover),
+			),
+		array(
+			array('key' => 'itunes:name', 'value' => $owner->name),
+			array('key' => 'itunes:email', 'value' => $owner->mail)
+		)
+	);
+	
+	if($origin->type == 'podcast'){
+		if($origin->blocked){
+			$channel_elements[] = array(
+											'key' => 'itunes:blocked'
+										);
+		}
+	
+		if($origin->explicit != 'no'){
+			$channel_elements[] = array(
+											'key' => 'itunes:explicit',
+											'value' => $origin->explicit
+										);
+		}
+	
+		if($origin->keywords){
+			$channel_elements[] = array(
+											'key' => 'itunes:keywords',
+											'value' => $origin->keywords
+										);
+		}
+	}
+	
+	$output = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+	$output .= "<rss version=\"". $channel["version"] . "\" xml:base=\"". $base_url ."\" ". implode(' ', $namespaces) .">\n";
+	$output .= format_rss_channel($channel['title'], $channel['link'], $channel['description'], $items, $channel['language'], $channel_elements);
+	$output .= "</rss>\n";
+
+	drupal_set_header('Content-Type: application/rss+xml; charset=utf-8');
+	print $output;
+}
+
+function jam2_episode_list($pid) {
+	$result = db_query("SELECT n.nid FROM {node} n INNER JOIN {jam_podcast_episode} e ON e.nid = n.nid WHERE e.pid = %d ORDER BY n.created", $pid);
+	$episode_list = array();
+	while($node = db_fetch_object($result)){
+		$episode = node_load($node->nid);
+		$episode_list[] = $episode;
+	}
+	return $episode_list;
+}
+
+function jam2_handle_taxonomy(&$node){
+	if($vid = variable_get('jam2_vid', 0)){
+		$vocabulary = taxonomy_get_vocabulary($vid);
+	}
+	if(!isset($vocabulary)){
+		$vocabulary = array('name' => t('Jam Tree'), 'multiple' => '0', 'required' => '0', 'hierarchy' => '1', 'relations' => '0', 'module' => 'jam2', 'nodes' => array('jam' => 1));
+		taxonomy_save_vocabulary($vocabulary);
+		$vid = $vocabulary['vid'];
+		variable_set('jam2_vid', $vid);
+		$vocabulary = (object)$vocabulary;
+	}
+
+	if($tid = @$node->taxonomy[$vid]){
+		$album_term = taxonomy_get_term($tid);
+		if(! $node->album){
+			$node->album = $album_term->name;
+			$node->album_tid = $album_term->tid;
+		}
+		if(! $node->artist){
+			$parents = taxonomy_get_parents($node->album_tid);
+			$artist_term = array_pop($parents);
+			$node->artist = $artist_term->name;
+			$node->artist_tid = $artist_term->tid;
+		}
+	}
+	else{
+		if($node->artist){
+			$artist_term = jam2_get_term($node->artist, $vid);
+			$node->artist = $artist_term->name;
+			$node->artist_tid = $artist_term->tid;
+		}
+		if($node->album){
+			$album_term = jam2_get_term($node->album, $vid, $node->artist_tid);
+			$node->album = $album_term->name;
+			$node->album_tid = $album_term->tid;
+		}
+	}
+}
+
+function jam2_path_form_alter($form, $node){
+	if(isset($form['path'])) {
+		$url_alias = $form['path']['path']['#default_value'];
+		if(empty($url_alias)){
+			unset($form['path']);
+		}
+		else{
+			unset($form['path']['path']);
+			$form['path']['value'] = array('#value' => t('Automatically generated path alias: %url', array('%url' => theme('placeholder', $url_alias))));
+		}
+	}
+	return $form;
+}
+
+function jam2_get_term($name, $vid, $parent=0, $dontwarn=0){
+	$initial_terms = taxonomy_get_term_by_name($name);
+	$parent_state = _jam2_array_multiply($parent, count($initial_terms));
+	$vid_state = _jam2_array_multiply($vid, count($initial_terms));
+	if($parent){
+		$possible_terms = array_filter(array_map('_jam2_map_orphans', $initial_terms, $parent_state, $vid_state));
+	}
+	else{
+		$possible_terms = array_filter(array_map('_jam2_map_children', $initial_terms, $parent_state, $vid_state));
+	}
+	
+	if(count($possible_terms) > 1){
+		$matches = implode(', ', array_map('_get_term_name', $possible_terms));
+		if(! $dontwarn){
+			drupal_set_message("Ambiguous name, \"$name\", did you mean one of these: " . $matches . '?', 'error');
+		}
+		return;
+	}
+
+	$term = null;
+	if(count($possible_terms) == 1){
+		$term = $possible_terms[0];
+	}
+	else{
+		$term = array('name' => $name, 'vid' => $vid, 'parent' => $parent);
+		taxonomy_save_term($term);
+		$term = (object)$term;
+	}
+	return $term;
+}
+
+function jam2_albums_block(){
+	$jam_tree = array();
+	$content = '';
+
+	$result = db_query("SELECT nid FROM {jam_album} WHERE featured = 1");
+	while($node = db_fetch_object($result)){
+		$album = node_load($node->nid);
+		$jams = jam2_album_get_jams($album);
+		$content .= theme('item_list', array_map('_jam2_jamify', $jams), l($album->title, "albums/$album->code"), 'ol');
+	}
+	return array('subject' => 'Featured Jams', 'content' => $content);
+}
+
+function jam2_get_undefined_albums(){
+	$result = db_query("SELECT t.tid, t.name, IFNULL(a.tid, 0) AS defined FROM {term_data} t LEFT JOIN {jam_album} a ON t.tid = a.tid WHERE t.vid = %d", variable_get('jam2_vid', 0));
+	while($album = db_fetch_object($result)){
+		if(! $album->defined){
+			$parents = taxonomy_get_parents($album->tid);
+			if($parents){
+				$artist_term = array_pop($parents);
+				$album_list["tid-$album->tid"] = $album->name . ', by ' . $artist_term->name;
+			}
+		}
+	}
+
+	return $album_list;
+}
+
+function jam2_get_user_playlists($user){
+	$playlists = array();
+	$result = db_query("SELECT p.pid, n.title FROM {node} n INNER JOIN {jam_podcast} p ON p.nid = n.nid WHERE n.uid = %d", $user->uid);
+	while($podcast = db_fetch_object($result)){
+		$playlists["pid-$podcast->pid"] = $podcast->title;
+	}
+	return $playlists;
+}
+
+function jam2_get_user_jams($user){
+	$jams = array();
+	$result = db_query("SELECT j.jid, j.artist_tid, j.album_tid, n.title FROM {node} n INNER JOIN {jam} j ON j.nid = n.nid WHERE n.uid = %d ORDER BY j.artist_tid, j.album_tid", $user->uid);
+	while($jam = db_fetch_object($result)){
+		$artist_term = taxonomy_get_term($jam->artist_tid);
+		$album_term = taxonomy_get_term($jam->album_tid);
+		$jams["jid-$jam->jid"] = "$artist_term->name - $album_term->name - $jam->title";
+	}
+	return $jams;
+}
+
+function jam2_get_enclosure($node){
+	$enclosure_url = jam2_get_enclosure_url($node);
+	require_once "HTTP/Request.php";
+	
+	$req =& new HTTP_Request($enclosure_url);
+	$req->setMethod(HTTP_REQUEST_METHOD_HEAD);
+
+	if(! PEAR::isError($req->sendRequest())) {
+		return array(
+			'key' => 'enclosure',
+			'attributes' => array(
+									'url' => $enclosure_url,
+									'length' => $req->_response->_headers['content-length'],
+									'type' => $req->_response->_headers['content-type']
+								)
+		);
+	}
+}
+
+function jam2_get_enclosure_url($node){
+	if($node->type == 'episode' && !$node->url && !$node->media && $node->jid){
+		$jam = db_fetch_object(db_query("SELECT nid FROM {jam} WHERE jid = %d", $node->jid));
+		return jam2_get_enclosure_url(node_load($jam->nid));
+	}
+	
+	return $node->url ? $node->url : file_create_url($node->media);
+}
+
+function jam2_get_itunes_data($node){
+	$owner = db_fetch_object(db_query("SELECT * FROM {users} WHERE uid = %d", $node->uid));
+	//owner should actually be a channel level item, not item level, like it is here
+	if($node->type == 'jam'){
+		$fields = array(
+						array('key' => 'itunes:author', 'value' => $node->artist),
+						array('key' => 'itunes:subtitle', 'value' => $node->album),
+						array('key' => 'itunes:summary', 'value' => $node->body),
+						array('key' => 'itunes:owner', 'value' => array(
+												array('key' => 'itunes:name', 'value' => $owner->name),
+												array('key' => 'itunes:email', 'value' => $owner->mail)
+												))
+						);
+	}
+	else{
+		$fields = array(
+						array('key' => 'itunes:author', 'value' => $owner->name),
+						array('key' => 'itunes:subtitle', 'value' => $node->title),
+						array('key' => 'itunes:summary', 'value' => $node->body),
+						array('key' => 'itunes:owner', 'value' => array(
+												array('key' => 'itunes:name', 'value' => $owner->name),
+												array('key' => 'itunes:email', 'value' => $owner->mail)
+												))
+						);
+	}
+	return $fields;
+}
+
+function jam2_validate_code(&$node, $type){
+	if(preg_match('/[^-_\w]/', $node->code)){
+		form_set_error('code', "Sorry, URL codes may consist only of letters, numbers, hyphens, and underscores. A suggested URL code has been entered for you.");
+		$node->code = preg_replace('/\W/', '-', strtolower($node->code));
+	}
+	
+	$result = db_query("SELECT nid FROM {" . $type . "} WHERE code = '%s' AND nid != %d", $node->code, $node->nid);
+	if(db_num_rows($result)){
+		form_set_error('code', "Sorry, that URL code is in use. The code you entered has been modified to be unique, but you may wish to customize it further.");
+		$node->code .= '-' . time();
+	}
+}
+
+function _jam2_jamify($jam){
+	$title = $jam->comment_count ? array('title' => format_plural($jam->comment_count, '1 comment', '%count comments')) : '';
+	$byline = ($jam->composer ? " <span class=\"byline\">$jam->composer</span>" : '');
+	return l($jam->title, drupal_get_path_alias('node/' . $jam->nid), $title) . $byline;
+}
+
+function _jam2_podify($episode){
+	return l($episode->title, drupal_get_path_alias('node/' . $episode->nid), "Podcast on: " . date('r', $episode->created));
+}
+
+function _jam2_album_tid($album){
+	return $album->tid;
+}
+
+function _jam2_map_orphans($term, $parent, $vid){
+	if(in_array($parent, taxonomy_get_parents($term->tid)) && $term->vid == $vid){
+		return $term;
+	}
+	return null;
+}
+
+function _jam2_map_children($term, $parent, $vid){
+	if(taxonomy_get_parents($term->tid) || $term->vid != $vid){
+		return null;
+	}
+	return $term;
+}
+
+function _jam2_array_multiply($item, $count){
+	$result = array();
+	while($count--){
+		$result[] = $item;
+	}
+	return $result;
+}
+
+function _jam2_jid($jam){
+	return $jam->jid;
+}
+
+function _jam2_jam_sort($a, $b){
+	return ($a->track == $b->track ? 0 : ($a->track < $b->track ? -1 : 1));
+}

@@ -1,0 +1,41 @@
+.jam-album-cover-teaser {
+	width: 120px;
+}
+
+.jam-album-cover-teaser {
+	padding: 0px 10px 10px 0px;
+}
+
+.jam-album-cover {
+	float: left;
+	clear: both;
+	padding: 0px 10px 10px 0px;
+}
+
+.jam-album-tracks ol,
+.jam-podcast-episodes ol {
+	position: relative;
+	left: 10px;
+}
+
+.jam-album-tracks .feed-icon {
+	position: relative;
+	left: 10px;
+}
+
+.jam-download,
+.episode-download {
+	background-color: #ddd;
+	margin: 15px 0px 15px 0px;
+}
+
+.byline:before {
+	content: '(';
+}
+.byline:after {
+	content: ')';
+}
+.byline {
+	font-size: 11px;
+	font-style: italic;
+}
