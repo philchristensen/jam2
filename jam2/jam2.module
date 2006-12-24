@@ -68,7 +68,7 @@ function jam2_menu($may_cache) {
 			'access' => user_access('define albums'));
 		$items[] = array('path' => 'node/add/podcast', 'title' => t('podcast'),
 			'access' => user_access('create playlists'));
-		$items[] = array('path' => 'node/add/episode', 'title' => t('podcast'),
+		$items[] = array('path' => 'node/add/episode', 'title' => t('episode'),
 			'access' => user_access('create podcast episodes'));
 	}
 	
