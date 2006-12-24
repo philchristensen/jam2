@@ -1,0 +1,104 @@
+------------------------------------------------------------------------
+r98 | phil | 2006-12-23 13:42:52 -0500 (Sat, 23 Dec 2006) | 1 line
+
+Moving jam2 module to its own directory
+------------------------------------------------------------------------
+r95 | phil | 2006-12-22 21:20:23 -0500 (Fri, 22 Dec 2006) | 1 line
+
+Rewrote some syntax that broke php4.
+------------------------------------------------------------------------
+r93 | phil | 2006-12-17 23:16:49 -0500 (Sun, 17 Dec 2006) | 1 line
+
+enlarged media player, began infrastructure for playlist support, but it's going to be tough.
+------------------------------------------------------------------------
+r92 | phil | 2006-12-17 11:55:32 -0500 (Sun, 17 Dec 2006) | 1 line
+
+Updated install files to be aware of table prefixes...
+------------------------------------------------------------------------
+r91 | phil | 2006-12-17 11:47:31 -0500 (Sun, 17 Dec 2006) | 1 line
+
+Added first version of related nodes module, still needs work to support ordering.
+------------------------------------------------------------------------
+r90 | phil | 2006-12-17 11:27:33 -0500 (Sun, 17 Dec 2006) | 1 line
+
+Initial import of coral_protection module
+------------------------------------------------------------------------
+r88 | phil | 2006-12-08 17:27:37 -0500 (Fri, 08 Dec 2006) | 1 line
+
+Increased weight range for tracks, made loading an album's jams more efficient, expanded left sidebar in bubblehouse2 theme, to make room for available jams block
+------------------------------------------------------------------------
+r87 | phil | 2006-12-06 22:51:36 -0500 (Wed, 06 Dec 2006) | 1 line
+
+Color tweaks, removed artist/album requirement
+------------------------------------------------------------------------
+r85 | phil | 2006-12-06 22:42:32 -0500 (Wed, 06 Dec 2006) | 1 line
+
+Fixed album feed bug, block weights, added composer field
+------------------------------------------------------------------------
+r84 | phil | 2006-12-06 19:07:43 -0500 (Wed, 06 Dec 2006) | 1 line
+
+Cleaned up taxonomy links in theme, and removed 'jam out' from jam links...
+------------------------------------------------------------------------
+r83 | phil | 2006-12-06 00:04:27 -0500 (Wed, 06 Dec 2006) | 1 line
+
+Small issues...
+------------------------------------------------------------------------
+r82 | phil | 2006-12-05 23:40:48 -0500 (Tue, 05 Dec 2006) | 1 line
+
+whoops...
+------------------------------------------------------------------------
+r81 | phil | 2006-12-05 23:35:24 -0500 (Tue, 05 Dec 2006) | 1 line
+
+Final revisions before testing...
+------------------------------------------------------------------------
+r80 | phil | 2006-12-03 16:31:15 -0500 (Sun, 03 Dec 2006) | 1 line
+
+Initial development complete.
+------------------------------------------------------------------------
+r79 | phil | 2006-12-03 14:12:59 -0500 (Sun, 03 Dec 2006) | 1 line
+
+Made album/artist taxonomy more intuitive (nested), implemented almost everything else for podcasts, but still need to make in interface for selecting items.
+------------------------------------------------------------------------
+r78 | phil | 2006-12-03 11:26:55 -0500 (Sun, 03 Dec 2006) | 1 line
+
+Added comment to jam2_get_itunes_data
+------------------------------------------------------------------------
+r77 | phil | 2006-12-03 00:21:12 -0500 (Sun, 03 Dec 2006) | 1 line
+
+Implemented basic podcast episode node type.
+------------------------------------------------------------------------
+r76 | phil | 2006-12-02 23:44:25 -0500 (Sat, 02 Dec 2006) | 1 line
+
+Finished basic podcast node type
+------------------------------------------------------------------------
+r75 | phil | 2006-12-02 22:43:15 -0500 (Sat, 02 Dec 2006) | 1 line
+
+Restructured url aliasing scheme to follow project modules's approach, added download links for appropriate items, cleaned up podcasts of albums and began general podcast interface.
+------------------------------------------------------------------------
+r74 | phil | 2006-12-01 01:11:51 -0500 (Fri, 01 Dec 2006) | 1 line
+
+Added url codes and featured albums
+------------------------------------------------------------------------
+r73 | phil | 2006-11-27 16:32:18 -0500 (Mon, 27 Nov 2006) | 1 line
+
+Fixed bug in album display.
+------------------------------------------------------------------------
+r72 | phil | 2006-11-27 01:10:56 -0500 (Mon, 27 Nov 2006) | 1 line
+
+First success with podcast functionality.
+------------------------------------------------------------------------
+r71 | phil | 2006-11-26 20:17:20 -0500 (Sun, 26 Nov 2006) | 1 line
+
+Finished album implementation...
+------------------------------------------------------------------------
+r70 | phil | 2006-11-24 15:28:57 -0500 (Fri, 24 Nov 2006) | 1 line
+
+Integrated with taxonomy layer...
+------------------------------------------------------------------------
+r69 | phil | 2006-11-22 17:25:33 -0500 (Wed, 22 Nov 2006) | 1 line
+
+Finished initial development of jam2 module.
+------------------------------------------------------------------------
+r67 | phil | 2006-11-19 16:03:54 -0500 (Sun, 19 Nov 2006) | 2 lines
+
+Initial import.

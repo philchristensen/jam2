@@ -1,4 +1,10 @@
 <?php
+# Jam2 - a drupal module
+# Copyright (C) 2006 Phil Christensen
+#
+# $Id$
+#
+# See LICENSE for details
 
 function jam2_install() {
 

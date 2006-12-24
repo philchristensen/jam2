@@ -1,0 +1,37 @@
+Jam2
+a drupal module
+for Drupal 4.7
+
+(c) Phil Christensen
+
+Jam2 is a collection of components for the Drupal CMS platform.
+
+Jam2 provides a number on new node types that allow independent musicians to upload media and cover art,
+add album and artist data, and create and manage podcasts of new material or previously uploaded jams.
+Uploaded media can be presented to the user as an embedded Flash player, a download link, or both.
+
+Users can create podcasts that feature the full array of iTunes tag data, so that podcasts can be easily
+listed with the iTunes Podcast Directory. Albums, once defined, can also provide their own podcasts,
+allowing musicians who choose so to involve their fans throughout the creation of an album.
+
+Copyright
+
+  All of the code in this distribution is (C) Phil Christensen
+
+  Jam2 is made available under version 2 of the GNU General Public
+  License.  The included LICENSE file describes this in detail.
+
+
+Warranty
+
+  THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER
+  EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  THE ENTIRE RISK AS
+  TO THE USE OF THIS SOFTWARE IS WITH YOU.
+
+  IN NO EVENT WILL ANY COPYRIGHT HOLDER, OR ANY OTHER PARTY WHO MAY MODIFY
+  AND/OR REDISTRIBUTE THE LIBRARY, BE LIABLE TO YOU FOR ANY DAMAGES, EVEN IF
+  SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
+  DAMAGES.
+
+  Again, see the included LICENSE file for specific legal details.

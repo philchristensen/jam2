@@ -1,7 +1,0 @@
-function copyArtist(){
-	
-}
-
-function copyAlbum(){
-	
-}

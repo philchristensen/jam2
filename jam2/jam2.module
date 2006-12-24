@@ -1,4 +1,10 @@
 <?php
+# Jam2 - a drupal module
+# Copyright (C) 2006 Phil Christensen
+#
+# $Id$
+#
+# See LICENSE for details
 
 theme_add_style(drupal_get_path('module', 'jam2') . '/jam2.css');
 

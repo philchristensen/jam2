@@ -1,0 +1,26 @@
+Jam2 QuickStart Guide
+
+
+Installing this module is like installing any other, just drop the jam2 folder into your modules directory
+in your Drupal installation.
+
+You'll also need to have the HTTP::Request PEAR module installed, if you don't already. This allows Jam2 to
+determine file size and other essential information about jams referenced via URL.
+
+Once you've activated the module on the admin/modules page, you should find four new node types available under
+the node/add page. These include:
+
+    * jam - Okay, it could have just been called 'song', or 'audio', or 'media', but that wouldn't have been nearly
+        as hip. These node types allow you to upload a single mp3, flv, or other media file. If you wish to use
+        the built-in flash media players, you'll need to use mp3 or flv. If you want to podcast the jam, you're
+        a little more limited, but we'll get into that later.
+    
+    * album - Once you've created at least one jam, and defined an album for it, you can create one of these
+        nodes to assign artwork and other metadata to the album. I find this node type ideal for front-page content.
+    
+    * podcast - Creating one of these nodes will configure the general paramters of a podcast. This isn't where
+        you upload content, that's an episode. Podcast types let you manage the iTunes title, category, summary,
+        and other podcast-specific metadata.
+    
+    * episode - Once you've created a podcast, you can add episodes to it by creating nodes of this type.
+    
