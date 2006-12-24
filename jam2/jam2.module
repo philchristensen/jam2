@@ -260,8 +260,8 @@ function jam2_jam_update($node) {
 }
 
 function jam2_jam_load($node) {
-	 $additions = db_fetch_object(db_query('SELECT jid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track FROM {jam} WHERE vid = %d', $node->vid));
-	 return $additions;
+	$additions = db_fetch_object(db_query('SELECT jid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track FROM {jam} WHERE vid = %d', $node->vid));
+	return $additions;
 }
 
 function jam2_jam_delete($node) {
@@ -276,6 +276,7 @@ function jam2_jam_view(&$node, $teaser = FALSE, $page = FALSE) {
 	else{
 		$node->body = theme('jam', $node, $teaser, $page);
 	}
+	$node->readmore = TRUE;
 }
 
 /*
@@ -394,6 +395,7 @@ function jam2_album_view(&$node, $teaser = FALSE, $page = FALSE) {
 	else{
 		$node->body = theme('album', $node, $teaser, $page);
 	}
+	$node->readmore = TRUE;
 }
 
 /*
@@ -491,6 +493,7 @@ function jam2_podcast_view(&$node, $teaser = FALSE, $page = FALSE) {
 	else{
 		$node->body = theme('podcast', $node, $teaser, $page);
 	}
+	$node->readmore = TRUE;
 }
 
 /*
@@ -633,12 +636,12 @@ function theme_jam($jam, $teaser = FALSE, $page = FALSE){
 			$url = jam2_get_enclosure_url($jam);
 			$type = array_pop(explode('.', strtolower($url)));
 			if($type == 'mp3'){
-				$media_player = drupal_get_path('module', 'jam2') .'/flash/mp3player.swf';
+				$media_player = url(drupal_get_path('module', 'jam2') .'/flash/mp3player.swf');
 				$width = 300;
 				$height = 100;
 			}
 			elseif($type == 'flv'){
-				$media_player = drupal_get_path('module', 'jam2') .'/flash/mediaplayer.swf';
+				$media_player = url(drupal_get_path('module', 'jam2') .'/flash/mediaplayer.swf');
 				$width = 320;
 				$height = 240;
 			}
