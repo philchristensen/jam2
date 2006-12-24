@@ -304,7 +304,7 @@ function jam2_album_form(&$node){
 	}
 
 	$form['featured'] = array('#type' => 'checkbox', '#default_value' => $node->featured, '#title' => t('Featured album'), '#description' => "Check here to display this album in the &quot;Featured Jams&quot; block");
-	$form['podcast'] = array('#type' => 'checkbox', '#default_value' => $node->podcast, '#title' => t('Enable playlists'), '#description' => "Check here to make this album available as a podcast");
+	$form['podcast'] = array('#type' => 'checkbox', '#default_value' => $node->podcast, '#title' => t('Enable podcasts'), '#description' => "Check here to make this album available as a podcast");
 	$form['code'] = array('#type' => 'textfield', '#title' => t('URL Code'), '#size' => 60, '#maxlength' => 255, '#required' => FALSE, '#default_value' => $node->code);
 
 	$form['cover'] = array('#type' => 'file', '#title' => t('Cover Image'), '#default_value' => $node->cover, '#size' => 40);
