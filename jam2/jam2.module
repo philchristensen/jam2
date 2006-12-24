@@ -61,7 +61,7 @@ function jam2_link($type, $node=null, $teaser=FALSE){
 }
 
 function jam2_perm() {
-	return array('create jams', 'edit my jams', 'define albums', 'edit my albums', 'create playlists', 'edit my playlists', 'create podcast episodes', 'edit my podcast episodes');
+	return array('create jams', 'edit my jams', 'define albums', 'edit my albums', 'create podcasts', 'edit my podcasts', 'create podcast episodes', 'edit my podcast episodes');
 }
 
 function jam2_menu($may_cache) {
@@ -73,7 +73,7 @@ function jam2_menu($may_cache) {
 		$items[] = array('path' => 'node/add/album', 'title' => t('jam album'),
 			'access' => user_access('define albums'));
 		$items[] = array('path' => 'node/add/podcast', 'title' => t('podcast'),
-			'access' => user_access('create playlists'));
+			'access' => user_access('create podcasts'));
 		$items[] = array('path' => 'node/add/episode', 'title' => t('episode'),
 			'access' => user_access('create podcast episodes'));
 	}
@@ -118,7 +118,7 @@ function jam2_access($op, $node) {
 			return user_access('define albums');
 		}
 		if($node->type == 'podcast'){
-			return user_access('create playlists');
+			return user_access('create podcasts');
 		}
 		if($node->type == 'episode'){
 			return user_access('create podcast episodes');
@@ -132,7 +132,7 @@ function jam2_access($op, $node) {
 		if($node->type == 'album' && user_access('edit my albums') && ($user->uid == $node->uid || $user->uid == 1)) {
 			return TRUE;
 		}
-		if($node->type == 'podcast' && user_access('edit my playlists') && ($user->uid == $node->uid || $user->uid == 1)) {
+		if($node->type == 'podcast' && user_access('edit my podcasts') && ($user->uid == $node->uid || $user->uid == 1)) {
 			return TRUE;
 		}
 		if($node->type == 'episode' && user_access('edit my podcast episodes') && ($user->uid == $node->uid || $user->uid == 1)) {
