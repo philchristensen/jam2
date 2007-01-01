@@ -716,7 +716,9 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 		$output .= '<div class="jam-album-tracks">';
 		$output .= theme('jam_list', $jams, 'Available Tracks:');
 		if($album->podcast){
-			$output .= theme('itunes_feed', url('playlists/'. $album->code));
+			$output .= theme('itunes_feed', url('playlists/'. $album->code . '/podcast'));
+			$output .= '<br/>';
+			$output .= theme('m3u', url('playlists/'. $album->code . '/m3u'));
 		}
 		$output .= '</div>';
 		$output .= '</td></tr>';
@@ -776,6 +778,14 @@ function theme_itunes_feed($url){
 	return theme('feed_icon', $url) . '&nbsp;&nbsp;&nbsp;&nbsp;iTunes-enhanced podcast';
 }
 
+function theme_m3u($url){
+	$output .= '<a href="' . $url . '" class="feed-icon">';
+	$output .= '<img src="' . drupal_get_path('module', 'jam2') . '/images/m3u.gif" border="0"/>';
+	$output .= '</a>';
+	$output .= '&nbsp;&nbsp;&nbsp;&nbsp;m3u playlist';
+	return $output;
+}
+
 function theme_media_link($node){
 	$url = jam2_get_enclosure_url($node);
 	$filename = array_shift(explode('?', basename($url)));
@@ -829,7 +839,15 @@ function jam2_playlist_page($code=null, $type='podcast'){
 }
 
 function jam2_m3u($result, $origin){
-	
+	$output = "#EXTM3U\n";
+	while($item = db_fetch_object($result)) {
+		$output .= "#EXTINF:0,$item->title\n";
+		$output .= jam2_get_enclosure_url($item) . "\n";
+	}
+	$origin = node_load($origin->nid);
+	drupal_set_header("Content-Type:	audio/x-mpegurl");
+	drupal_set_header("Content-Disposition:	attachment; filename=$origin->title.m3u");
+	print $output;
 }
 
 function jam2_feed($result, $origin) {
