@@ -780,7 +780,7 @@ function theme_itunes_feed($url){
 
 function theme_m3u($url){
 	$output .= '<a href="' . $url . '" class="feed-icon">';
-	$output .= '<img src="' . drupal_get_path('module', 'jam2') . '/images/m3u.gif" border="0"/>';
+	$output .= '<img src="' . base_path() . drupal_get_path('module', 'jam2') . '/images/m3u.gif" border="0"/>';
 	$output .= '</a>';
 	$output .= '&nbsp;&nbsp;&nbsp;&nbsp;m3u playlist';
 	return $output;
