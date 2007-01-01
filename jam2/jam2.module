@@ -841,6 +841,7 @@ function jam2_playlist_page($code=null, $type='podcast'){
 function jam2_m3u($result, $origin){
 	$output = "#EXTM3U\n";
 	while($item = db_fetch_object($result)) {
+		$item = node_load($item->nid);
 		$output .= "#EXTINF:0,$item->title\n";
 		$output .= jam2_get_enclosure_url($item) . "\n";
 	}
