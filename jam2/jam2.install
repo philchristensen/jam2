@@ -40,6 +40,7 @@ function jam2_install() {
             code varchar(255) NOT NULL DEFAULT '',
             featured tinyint(1) NOT NULL DEFAULT '0',
             podcast tinyint(1) NOT NULL DEFAULT '0',
+            m3u tinyint(1) NOT NULL DEFAULT '0',
             cover varchar(255) NOT NULL DEFAULT '',
             PRIMARY KEY (aid),
             UNIQUE KEY code_idx (code),
@@ -57,6 +58,7 @@ function jam2_install() {
             explicit varchar(4) NOT NULL DEFAULT '',
             keywords varchar(255) NOT NULL DEFAULT '',
             subtitle varchar(255) NOT NULL DEFAULT '',
+            m3u tinyint(1) NOT NULL DEFAULT '0',
             PRIMARY KEY (pid),
             UNIQUE KEY code_idx (code),
             UNIQUE KEY nid_idx (nid,vid,pid)
