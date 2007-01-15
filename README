@@ -6,7 +6,7 @@ for Drupal 4.7
 
 Jam2 is a collection of components for the Drupal CMS platform.
 
-Jam2 provides a number on new node types that allow independent musicians to upload media and cover art,
+Jam2 provides a number of new node types that allow independent musicians to upload media and cover art,
 add album and artist data, and create and manage podcasts of new material or previously uploaded jams.
 Uploaded media can be presented to the user as an embedded Flash player, a download link, or both.
 
