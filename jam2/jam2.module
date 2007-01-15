@@ -713,7 +713,7 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $album->cover . '"/>';
 		}
 		else{
-			$output .= '<img class="jam-album-cover" src="' . url(base_path() . $album->cover) . '"/>';
+			$output .= '<img class="jam-album-cover" src="' . base_path() . $album->cover . '"/>';
 		}
 	}
 	$output .= '</td><td valign="top">';
