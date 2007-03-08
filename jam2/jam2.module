@@ -404,6 +404,7 @@ function jam2_album_load($node) {
 
 function jam2_album_get_jams($album){
 	$jam_result = db_query("SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n INNER JOIN {term_node} tn ON n.nid = tn.nid INNER JOIN {jam} j ON j.nid = n.nid WHERE tn.tid = $album->tid AND n.status = 1 ORDER BY j.track");
+	$jams = array();
 	while($node = db_fetch_object($jam_result)){
 		$jams[] = node_load($node->nid);
 	}
