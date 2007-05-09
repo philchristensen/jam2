@@ -707,26 +707,22 @@ function theme_episode($episode, $teaser = FALSE, $page = FALSE){
 function theme_album($album, $teaser = FALSE, $page = FALSE){
 	$jams = jam2_album_get_jams($album);
 
-	$output = '<table class="jam-album">';
-	$output .= '<tr><td valign="top"' . ($teaser ? '' : ' rowspan="2"') . '>';
 	if($album->cover){
 		if($teaser){
-			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $album->cover . '"/>';
+			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . base_path() . $album->cover . '"/></a>';
 		}
 		else{
-			$output .= '<img class="jam-album-cover" src="' . base_path() . $album->cover . '"/>';
+			$output .= '<img class="jam-album-cover" align="left" src="' . base_path() . $album->cover . '"/>';
 		}
 	}
-	$output .= '</td><td valign="top">';
+
 	if($teaser){
 		$output .= $album->teaser;
 	}
 	else{
 		$output .= $album->body;
 	}
-	$output .= '</td></tr>';
 	if(! $teaser){
-		$output .= '<tr><td valign="top">';
 		$output .= '<div class="jam-album-tracks">';
 		$output .= theme('jam_list', $jams, 'Available Tracks:');
 		if($album->podcast){
@@ -737,9 +733,7 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 			$output .= theme('m3u', url('playlists/'. $album->code . '/m3u'));
 		}
 		$output .= '</div>';
-		$output .= '</td></tr>';
 	}
-	$output .= '</table>';
 
 	return $output;
 }
