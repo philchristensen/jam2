@@ -149,11 +149,15 @@ function jam2_access($op, $node) {
 function jam2_block($op = 'list', $delta = 0, $edit = array()) {
 	if ($op == 'list') {
 		$blocks[0]['info'] = t('Featured Jams');
+		$blocks[1]['info'] = t('Featured Albums');
 		return $blocks;
 	}
 	else if ($op == 'view') {
 		switch($delta) {
 			case 0:
+				$block = jam2_jams_block();
+				break;
+			case 1:
 				$block = jam2_albums_block();
 				break;
 		}
@@ -176,6 +180,13 @@ function jam2_admin(){
 		'#default_value' => variable_get('featured_jams_title', 'Featured Jams'), 
 		'#required' => TRUE
 	);
+	$form['featured_albums_title'] = array(
+		'#type' => 'textfield', 
+		'#title' => t('Featured Albums Title'),
+		'#description' => 'This will be the title of the Featured Albums block.',
+		'#default_value' => variable_get('featured_albums_title', 'Featured Albums'), 
+		'#required' => TRUE
+	);
 	$form['submit'] = array('#type' => 'submit', '#value' => t('Save Jam Settings'));
 	
 	return drupal_get_form('jam2_admin', $form);
@@ -183,6 +194,7 @@ function jam2_admin(){
 
 function jam2_admin_submit($form_id, $form_values){
 	variable_set('featured_jams_title', $form_values['featured_jams_title']);
+	variable_set('featured_albums_title', $form_values['featured_albums_title']);
 	drupal_set_message("Your changes have been saved.");
 	cache_clear_all();
 }
@@ -1154,7 +1166,7 @@ function jam2_get_term($name, $vid, $parent=0, $dontwarn=0){
 	return $term;
 }
 
-function jam2_albums_block(){
+function jam2_jams_block(){
 	$jam_tree = array();
 	$content = '';
 
@@ -1165,6 +1177,18 @@ function jam2_albums_block(){
 		$content .= theme('item_list', array_map('_jam2_jamify', $jams), l($album->title, "albums/$album->code"), 'ol');
 	}
 	return array('subject' => variable_get('featured_jams_title', 'Featured Jams'), 'content' => $content);
+}
+
+function jam2_albums_block(){
+	$jam_tree = array();
+	$content = '<div class="featured-albums">';
+	$result = db_query("SELECT nid FROM {jam_album} WHERE featured = 1");
+	while($node = db_fetch_object($result)){
+		$album = node_load($node->nid);
+		$content .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '" title="'.$album->title.'"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $album->cover . '"/></a>';
+	}
+	$content .= '</div>';
+	return array('subject' => variable_get('featured_albums_title', 'Featured Albums'), 'content' => $content);
 }
 
 function jam2_get_undefined_albums(){
