@@ -1182,7 +1182,7 @@ function jam2_jams_block(){
 function jam2_albums_block(){
 	$jam_tree = array();
 	$content = '<div class="featured-albums">';
-	$result = db_query("SELECT nid FROM {jam_album} WHERE featured = 1");
+	$result = db_query("SELECT nid FROM {jam_album} WHERE featured = 1 ORDER BY nid DESC");
 	while($node = db_fetch_object($result)){
 		$album = node_load($node->nid);
 		$content .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid)) . '" title="'.$album->title.'"><img class="jam-album-cover-teaser" border="0" src="' . base_path() . $album->cover . '"/></a>';
