@@ -20,6 +20,8 @@ function jam2_install() {
             media varchar(255) NOT NULL DEFAULT '',
             url varchar(255) NOT NULL DEFAULT '',
             control varchar(255) NOT NULL DEFAULT '',
+            width int(11) NOT NULL DEFAULT '0',
+            height int(11) NOT NULL DEFAULT '0',
             artist varchar(255) NOT NULL DEFAULT '',
             artist_tid int(10) unsigned NOT NULL DEFAULT '0',
             album varchar(255) NOT NULL DEFAULT '',

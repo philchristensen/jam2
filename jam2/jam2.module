@@ -243,7 +243,12 @@ function jam2_jam_form(&$node) {
 								'protected' => t('Embedded Player Only')
 								),
 			'#description' => 'Select how this media will be displayed to the user.');
-
+	
+	$form['media_group']['width'] = array('#type' => 'textfield', '#title' => t('Width'), '#default_value' => $node->width,
+			'#description' => 'If an embedded video, the width of the viewer.');
+	$form['media_group']['height'] = array('#type' => 'textfield', '#title' => t('Height'), '#default_value' => $node->height,
+			'#description' => 'If an embedded video, the height of the viewer.');
+	
 	$form['body'] = array('#type' => 'textarea', '#title' => t('Body'), '#rows' => 20, '#default_value' => $node->body);
 	$form['format'] = filter_form($node->format);
 
@@ -275,8 +280,8 @@ function jam2_jam_submit(&$node){
 function jam2_jam_insert($node) {
 	$node->jid = db_next_id('{jam}_jid');
 	jam2_handle_taxonomy($node);
-	db_query("INSERT INTO {jam} (jid, vid, nid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track) VALUES (%d, %d, %d, '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, '%s', %d)",
-				$node->jid, $node->vid, $node->nid, $node->code, $node->media, $node->url, $node->control, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track);
+	db_query("INSERT INTO {jam} (jid, vid, nid, code, media, url, control, width, height, artist, artist_tid, album, album_tid, composer, track) VALUES (%d, %d, %d, '%s', '%s', '%s', '%s', '%s', %d, '%s', %d, '%s', %d)",
+				$node->jid, $node->vid, $node->nid, $node->code, $node->media, $node->url, $node->control, $node->width, $node->height, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track);
 	$node->path = 'jams/' . $node->code;
 }
 
@@ -291,14 +296,14 @@ function jam2_jam_update($node) {
 	}
 	else {
 		jam2_handle_taxonomy($node);
-		db_query("UPDATE {jam} SET code = '%s', media = '%s', url = '%s', control = '%s', artist = '%s', artist_tid = %d, album = '%s', album_tid = %d, composer = '%s', track = %d WHERE vid = %d",
-		$node->code, $node->media, $node->url, $node->control, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track, $node->vid);
+		db_query("UPDATE {jam} SET code = '%s', media = '%s', url = '%s', control = '%s', width = '%s', height = '%s', artist = '%s', artist_tid = %d, album = '%s', album_tid = %d, composer = '%s', track = %d WHERE vid = %d",
+		$node->code, $node->media, $node->url, $node->control, $node->width, $node->height, $node->artist, $node->artist_tid, $node->album, $node->album_tid, $node->composer, $node->track, $node->vid);
 		$node->path = 'jams/' . $node->code;
 	}
 }
 
 function jam2_jam_load($node) {
-	$additions = db_fetch_object(db_query('SELECT jid, code, media, url, control, artist, artist_tid, album, album_tid, composer, track FROM {jam} WHERE vid = %d', $node->vid));
+	$additions = db_fetch_object(db_query('SELECT jid, code, media, url, control, width, height, artist, artist_tid, album, album_tid, composer, track FROM {jam} WHERE vid = %d', $node->vid));
 	return $additions;
 }
 
@@ -669,13 +674,25 @@ function theme_jam($jam, $teaser = FALSE, $page = FALSE){
 			$type = array_pop(explode('.', strtolower($url)));
 			if($type == 'mp3'){
 				$media_player = url(drupal_get_path('module', 'jam2') .'/flash/mp3player.swf');
-				$width = 300;
-				$height = 100;
+				$width = $jam->width;
+				if(! $width){
+					$width = 300;
+				}
+				$height = $jam->height
+				if(! $height){
+					$height = 100;
+				}
 			}
 			elseif($type == 'flv'){
 				$media_player = url(drupal_get_path('module', 'jam2') .'/flash/mediaplayer.swf');
-				$width = 320;
-				$height = 240;
+				$width = $jam->width;
+				if(! $width){
+					$width = 320;
+				}
+				$height = $jam->height
+				if(! $height){
+					$height = 240;
+				}
 			}
 			else{
 				return;
@@ -690,7 +707,7 @@ function theme_jam($jam, $teaser = FALSE, $page = FALSE){
 			<param name="movie" value="$media_player" />
 			<param name="quality" value="high" />
 			<param name="bgcolor" value="#ffffff" />
-			<param name="FlashVars" value="contentPath=$video_url&autoPlay=$autoPlay" />
+			<param name="FlashVars" value="contentPath=$url&autoPlay=$autoPlay" />
 			<embed src="$media_player" quality="high" bgcolor="#ffffff" width="$width" height="$height" name="mediaplayer"
 			align="middle" allowScriptAccess="sameDomain" type="application/x-shockwave-flash"
 			FlashVars="contentPath=$url&autoPlay=1" pluginspage="http://www.macromedia.com/go/getflashplayer" />
