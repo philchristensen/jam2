@@ -678,7 +678,7 @@ function theme_jam($jam, $teaser = FALSE, $page = FALSE){
 				if(! $width){
 					$width = 300;
 				}
-				$height = $jam->height
+				$height = $jam->height;
 				if(! $height){
 					$height = 100;
 				}
@@ -689,7 +689,7 @@ function theme_jam($jam, $teaser = FALSE, $page = FALSE){
 				if(! $width){
 					$width = 320;
 				}
-				$height = $jam->height
+				$height = $jam->height;
 				if(! $height){
 					$height = 240;
 				}
