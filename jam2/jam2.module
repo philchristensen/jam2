@@ -738,10 +738,10 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 
 	if($album->cover){
 		if($teaser){
-			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid), NULL, NULL, TRUE) . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . url(base_path() . $album->cover, NULL, NULL, TRUE) . '"/></a>';
+			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid), NULL, NULL, TRUE) . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . url($album->cover, NULL, NULL, TRUE) . '"/></a>';
 		}
 		else{
-			$output .= '<img class="jam-album-cover" align="left" src="' . url(base_path() . $album->cover, NULL, NULL, TRUE) . '"/>';
+			$output .= '<img class="jam-album-cover" align="left" src="' . url($album->cover, NULL, NULL, TRUE) . '"/>';
 		}
 	}
 
