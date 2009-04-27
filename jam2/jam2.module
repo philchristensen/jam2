@@ -737,11 +737,13 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 	$jams = jam2_album_get_jams($album);
 
 	if($album->cover){
+		$cover_url = str_replace('+', '%20', url($album->cover, NULL, NULL, TRUE));
+		$cover_link = url(drupal_get_path_alias('node/' . $album->nid), NULL, NULL, TRUE);
 		if($teaser){
-			$output .= '<a href="' . url(drupal_get_path_alias('node/' . $album->nid), NULL, NULL, TRUE) . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . url($album->cover, NULL, NULL, TRUE) . '"/></a>';
+			$output .= '<a href="' . $cover_link . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . $cover_url . '"/></a>';
 		}
 		else{
-			$output .= '<img class="jam-album-cover" align="left" src="' . url($album->cover, NULL, NULL, TRUE) . '"/>';
+			$output .= '<img class="jam-album-cover" align="left" src="' . $cover_url . '"/>';
 		}
 	}
 
