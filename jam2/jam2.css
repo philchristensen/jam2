@@ -16,8 +16,7 @@
 }
 
 .jam-album-cover {
-	float: left;
-	height: 100%;
+	float: right;
 }
 .jam-album-cover img {
 	padding: 0px 10px 10px 0px;
