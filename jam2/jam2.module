@@ -740,10 +740,10 @@ function theme_album($album, $teaser = FALSE, $page = FALSE){
 		$cover_url = str_replace('+', '%20', url($album->cover, NULL, NULL, TRUE));
 		$cover_link = url(drupal_get_path_alias('node/' . $album->nid), NULL, NULL, TRUE);
 		if($teaser){
-			$output .= '<a href="' . $cover_link . '"><img class="jam-album-cover-teaser" align="left" border="0" src="' . $cover_url . '"/></a>';
+			$output .= '<div class="jam-album-cover-teaser"><a href="' . $cover_link . '"><img border="0" src="' . $cover_url . '"/></a></div>';
 		}
 		else{
-			$output .= '<img class="jam-album-cover" align="left" src="' . $cover_url . '"/>';
+			$output .= '<div class="jam-album-cover"><img src="' . $cover_url . '"/></div>';
 		}
 	}
 

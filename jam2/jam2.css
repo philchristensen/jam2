@@ -11,12 +11,15 @@
 	width: 120px;
 }
 
-.jam-album-cover-teaser {
+.jam-album-cover-teaser img {
 	padding: 0px 10px 10px 0px;
 }
 
-.jam-album-cover img {
+.jam-album-cover {
 	float: left;
+	height: 100%;
+}
+.jam-album-cover img {
 	padding: 0px 10px 10px 0px;
 }
 
